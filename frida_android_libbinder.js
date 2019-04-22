@@ -1,6 +1,5 @@
 'use strict';
 
-// Frida python side
 const PYMODE = false;
 var CACHE_LOG = "";
 
@@ -15,8 +14,8 @@ function log(type, message) {
     }
 }
 
-// Agent side
-var binder_driver_command_protocol = {  // enum binder_driver_command_protocol {
+// http://androidxref.com/kernel_3.18/xref/drivers/staging/android/uapi/binder.h#273
+var binder_driver_command_protocol = {  // enum binder_driver_command_protocol
     "BC_TRANSACTION": 0,
     "BC_REPLY": 1,
     "BC_ACQUIRE_RESULT": 2,
@@ -36,6 +35,7 @@ var binder_driver_command_protocol = {  // enum binder_driver_command_protocol {
     "BC_DEAD_BINDER_DONE": 16,
 };
 
+// http://androidxref.com/kernel_3.18/xref/drivers/staging/android/uapi/binder.h#77
 function parse_struct_binder_write_read(binder_write_read) {
     // arm64/include/uapi/linux/android/binder.h
     // struct binder_write_read {
@@ -58,7 +58,8 @@ function parse_struct_binder_write_read(binder_write_read) {
     }
 }
 
-function parse_binder_transaction_data(binder_transaction_data) { // binder_transaction
+// http://androidxref.com/kernel_3.18/xref/drivers/staging/android/uapi/binder.h#129
+function parse_binder_transaction_data(binder_transaction_data) {
     // arm64/include/uapi/linux/android/binder.h
     // struct binder_transaction_data {
     //     /* The first two are only used for bcTRANSACTION and brTRANSACTION,
@@ -116,9 +117,10 @@ function parse_binder_transaction_data(binder_transaction_data) { // binder_tran
     }
 }
 
+// http://androidxref.com/kernel_3.18/xref/drivers/staging/android/binder.c#1754
 function handle_write(write_buffer, write_size, write_consumed) { // binder_thread_write
     var cmd = write_buffer.readU32() & 0xff;
-    var ptr = write_buffer.add(write_consumed + 4);
+    var ptr = write_buffer.add(write_consumed + 4); // 4 = sizeof(uint32_t), the first 4 bytes contain "cmd"
     var end = write_buffer.add(write_size);
 
     switch (cmd) {
@@ -127,20 +129,17 @@ function handle_write(write_buffer, write_size, write_consumed) { // binder_thre
         case binder_driver_command_protocol.BC_REPLY:
             // log('INFO', "TRANSACTION / BC_REPLY!");
             var binder_transaction_data = parse_binder_transaction_data(ptr);
-            log("INFO", hexdump(binder_transaction_data.data.ptr.buffer, {
+
+            // Show me the secrets
+            log("INFO", "\n" + hexdump(binder_transaction_data.data.ptr.buffer, {
                 length: binder_transaction_data.data_size,
-            }));
+                ansi: true,
+            }) + "\n");
             break;
         default:
             // log('ERR', 'NOOP handler')
     }
 }
-
-
-function handle_read(read_buffer, read_size, read_consumed) { // binder_thread_read
-    // TODO
-}
-
 
 Java.perform(function(){
     var ioctl = Module.findExportByName("libbinder.so", "ioctl");
@@ -148,28 +147,16 @@ Java.perform(function(){
         onEnter: function(args) {
             var fd = args[0]; // int
             var cmd = args[1]; // int
-            // var code = cmd.toInt32() ;//& 0xff;
+
+            // value calculated from #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
             if(cmd != 0xc0306201) return;  // if 0xc0306201 then enter BINDER_WRITE_READ flow
             var data = args[2]; // void * -> pointer to binder_write_read
 
             var binder_write_read = parse_struct_binder_write_read(data);
 
-            // log("INFO", "ws: " + binder_write_read.write_size + ", wc: " +
-            // binder_write_read.write_consumed + ", rs: " + binder_write_read.read_size + ", rc: " + binder_write_read.read_consumed);
-
-            // if(read_size > 0) {
-            //     console.log(hexdump(read_buffer));
-            // }
-
             if(binder_write_read.write_size > 0) {
                 handle_write(binder_write_read.write_buffer, binder_write_read.write_size, binder_write_read.write_consumed);
             }
-            // log("INFO", "data: " + data + ", write: " + write_size);
-            //log("INFO", "write: " + code);
-
-        },
-        onLeave: function(retval) {
-            //log("INFO", "ioctl retval: " + retval);
         }
     })
 });
