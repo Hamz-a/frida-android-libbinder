@@ -1,4 +1,4 @@
-# frida-android-binder
+# frida-android-libbinder
 
 PoC Frida script to view Android libbinder traffic. The following links were a great source of inspiration and knowledge:
 - https://www.blackhat.com/docs/eu-14/materials/eu-14-Artenstein-Man-In-The-Binder-He-Who-Controls-IPC-Controls-The-Droid.pdf
