@@ -8,7 +8,7 @@ PoC Frida script to view Android libbinder traffic. The following links were a g
 - http://androidxref.com
 - https://android.googlesource.com/platform/frameworks/native/+/jb-dev/libs/binder/
 
-I wrote a blogpost which can be found here: https://bhamza.me/2019/04/24/Frida-Android-libbinder.html
+I wrote a blogpost which can be found here: [https://bhamza.me/blogpost/2019/04/24/Frida-Android-libbinder.html](https://bhamza.me/blogpost/2019/04/24/Frida-Android-libbinder.html)
 
 ## Usage
 
